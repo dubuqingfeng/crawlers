@@ -15,6 +15,7 @@ class AppSpiderItem(scrapy.Item):
 
 class BaiDuItem(scrapy.Item):
     app_name = Field()  # 应用名称
+    app_no = Field() #
     keyword = Field()  # 关键词
     link = Field()  # 链接
     download_num = Field()  # 下载量
@@ -22,5 +23,6 @@ class BaiDuItem(scrapy.Item):
     image_urls = Field() # 图标 url
     introduction = Field() # 介绍
     download_url = Field() # 下载 url
+    source = Field() # 来源
     version = Field()
     file_urls = Field()

@@ -2,22 +2,15 @@ import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
 from app_spider.items import BaiDuItem
-
+import datetime
 
 class BaiduSpider(CrawlSpider):
     name = 'baidu'
     allowed_domains = ['shouji.baidu.com']
-
-    # start_urls = ['https://shouji.baidu.com/software/']
-    #
-    # rules = (
-    #     Rule(LinkExtractor(allow=r'/software/\d+/', restrict_xpaths=('//*[@id="doc"]/ul')), callback='parse_item',
-    #          follow=True),
-    #     Rule(LinkExtractor(allow=r'list_\d+.html', restrict_xpaths=('//*[@id="doc"]/div[3]/div[2]/ul')),
-    #          callback='parse_item', follow=True),
-    #     Rule(LinkExtractor(allow=r'/software/\d+.html', restrict_xpaths=('//*[@id="doc"]/div[3]/div[1]/div/ul')),
-    #          callback='parse_detail', follow=True),
-    # )
+    custom_settings = {
+        'LOG_LEVEL':'DEBUG',
+        'LOG_FILE':'./logs/app_baidu_{}_{}_{}.log'.format(datetime.datetime.now().year,datetime.datetime.now().month,datetime.datetime.now().day)
+    }
 
     def start_requests(self):
         base_url = 'https://shouji.baidu.com/s?wd=%s&data_type=app'
@@ -25,12 +18,18 @@ class BaiduSpider(CrawlSpider):
             '三级人才',
             '写小说'
         ]
-        for i in app_list:
+        data = []
+        with open("names.txt","r",encoding="utf-8",errors='ignore') as f:
+            data = f.readlines()
+        for key in range(len(data)):
+            line = data[key]
+            i = line.strip() #list
             print(i)
-            yield scrapy.Request(url=base_url % i, method="GET", callback=self.parse_search_result, meta={'keyword': i})
+            yield scrapy.Request(url=base_url % i, method="GET", callback=self.parse_search_result, meta={'keyword': i, 'key': key})
 
     def parse_search_result(self, response):
         keyword = response.meta.get('keyword')
+        key = response.meta.get('keyword')
         for app_item in response.xpath(
                 '//div[contains(@class, "search-res")]/ul/li'):
             if app_item.extract() != '':
@@ -47,6 +46,8 @@ class BaiduSpider(CrawlSpider):
                 item['image_urls'] = app_item.xpath('div[contains(@class, "app")]/div[contains(@class, "icon")]/a/img/@src').extract_first()
                 item['introduction'] = app_item.xpath('div[contains(@class, "app")]/div[contains(@class, "info")]/div[contains(@class, "down")]/span/text()').extract_first()
                 item['download_url'] = app_item.xpath('div[contains(@class, "app")]/div[contains(@class, "little-install")]/a/@data_url').extract_first()
+                item['app_no'] = key
+                item['source'] = 'baidu'
                 yield item
 
     def parse_item(self, response):
@@ -66,5 +67,4 @@ class BaiduSpider(CrawlSpider):
         for key, value in item.fields.items():
             item[key] = eval(key)
 
-        print(item)
         yield item
