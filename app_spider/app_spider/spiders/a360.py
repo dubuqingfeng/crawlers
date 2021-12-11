@@ -1,12 +1,16 @@
 import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
-
+import datetime
 from app_spider.items import BaiDuItem
 
 
 class A360Spider(CrawlSpider):
     name = '360'
+    custom_settings = {
+        'LOG_LEVEL':'DEBUG',
+        'LOG_FILE':'./logs/app_360_{}_{}_{}.log'.format(datetime.datetime.now().year,datetime.datetime.now().month,datetime.datetime.now().day)
+    }
 
     def start_requests(self):
         base_url = 'http://m.app.so.com/search/index?q=%s&src=srp&startup=none'
@@ -24,6 +28,7 @@ class A360Spider(CrawlSpider):
 
     def parse_search_result(self, response):
         keyword = response.meta.get('keyword')
+        key = response.meta.get('key')
         for app_item in response.xpath(
                 '//div/div[contains(@class, "main")]/div[contains(@class, "list")]/ul/li'):
             if app_item.extract() != '':

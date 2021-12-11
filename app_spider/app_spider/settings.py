@@ -89,4 +89,4 @@ HTTPCACHE_IGNORE_HTTP_CODES = []
 # HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 MONGO_URI = os.getenv('MONGO_URI', '127.0.0.1')
 MONGO_DB = os.getenv('MONGO_DB', 'mongodb_db')
-MONGO_COL = os.getenv('MONGO_COL', 'collections')
+MONGO_COL = os.getenv('MONGO_COL', '')
