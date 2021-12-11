@@ -49,6 +49,9 @@ class MongoPipeline(object):
 
     def _insert(self, item, out):
         collections = ''
-        collections = self.mongo_col
-        self.mongodb[self.mongo_col].insert(dict(item))
+        if 'source' in item.keys():
+            collections = item['source']
+        if len(self.mongo_col) != 0:
+            collections = self.mongo_col
+        self.mongodb[collections].insert(dict(item))
         reactor.callFromThread(out.callback, item)

@@ -8,32 +8,22 @@ from app_spider.items import BaiDuItem
 class A360Spider(CrawlSpider):
     name = '360'
 
-    # allowed_domains = ['www.xxx.com']
-    # start_urls = ['http://www.xxx.com/']
-    #
-    # rules = (
-    #     Rule(LinkExtractor(allow=r'Items/'), callback='parse_item', follow=True),
-    # )
-    #
-    # def parse_item(self, response):
-    #     item = {}
-    #     #item['domain_id'] = response.xpath('//input[@id="sid"]/@value').get()
-    #     #item['name'] = response.xpath('//div[@id="name"]').get()
-    #     #item['description'] = response.xpath('//div[@id="description"]').get()
-    #     return item
-
     def start_requests(self):
         base_url = 'http://m.app.so.com/search/index?q=%s&src=srp&startup=none'
         app_list = [
             '写小说'
         ]
-        for i in app_list:
-            print(i)
-            yield scrapy.Request(url=base_url % i, method="GET", callback=self.parse_search_result, meta={'keyword': i})
+        data = []
+        with open("names.txt", "r", encoding="utf-8", errors='ignore') as f:
+            data = f.readlines()
+        for key in range(len(data)):
+            line = data[key]
+            i = line.strip() #list
+            print("appno: %d, appname: %s" % (key, i))
+            yield scrapy.Request(url=base_url % i, method="GET", callback=self.parse_search_result, meta={'keyword': i, 'key': key})
 
     def parse_search_result(self, response):
         keyword = response.meta.get('keyword')
-        print(keyword)
         for app_item in response.xpath(
                 '//div/div[contains(@class, "main")]/div[contains(@class, "list")]/ul/li'):
             if app_item.extract() != '':
@@ -52,5 +42,6 @@ class A360Spider(CrawlSpider):
                 item['introduction'] = ''
                 item['download_url'] = app_item.xpath(
                     'div[contains(@class, "btns")]/a/@href').extract_first()
+                item['app_no'] = key
+                item['source'] = 'a360'
                 yield item
-        print(response.url)

@@ -14,22 +14,18 @@ class BaiduSpider(CrawlSpider):
 
     def start_requests(self):
         base_url = 'https://shouji.baidu.com/s?wd=%s&data_type=app'
-        app_list = [
-            '三级人才',
-            '写小说'
-        ]
         data = []
-        with open("names.txt","r",encoding="utf-8",errors='ignore') as f:
+        with open("names.txt", "r", encoding="utf-8", errors='ignore') as f:
             data = f.readlines()
         for key in range(len(data)):
             line = data[key]
             i = line.strip() #list
-            print(i)
+            print("appno: %d, appname: %s" % (key, i))
             yield scrapy.Request(url=base_url % i, method="GET", callback=self.parse_search_result, meta={'keyword': i, 'key': key})
 
     def parse_search_result(self, response):
         keyword = response.meta.get('keyword')
-        key = response.meta.get('keyword')
+        key = response.meta.get('key')
         for app_item in response.xpath(
                 '//div[contains(@class, "search-res")]/ul/li'):
             if app_item.extract() != '':
