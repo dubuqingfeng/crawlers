@@ -53,8 +53,6 @@ class QimaiSpider(CrawlSpider):
             analysis = self.get_analysis(data, url)
             params['analysis'] = analysis
             print("appno: %d, appname: %s, market: %d" % (key, i, market))
-            print(params)
-            print(f'{base_url}{url}')
             rurl = base_url + url + '?' +  urlencode(params)
             yield scrapy.Request(url=rurl, method="GET", callback=self.parse_search_result, meta={'keyword': i, 'key': key}, headers=headers)
 
