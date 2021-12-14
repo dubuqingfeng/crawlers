@@ -17,11 +17,11 @@ class A360Spider(CrawlSpider):
         app_list = [
             '写小说'
         ]
-        data = []
+        app_list = []
         with open("names.txt", "r", encoding="utf-8", errors='ignore') as f:
-            data = f.readlines()
-        for key in range(len(data)):
-            line = data[key]
+            app_list = f.readlines()
+        for key in range(len(app_list)):
+            line = app_list[key]
             i = line.strip() #list
             print("appno: %d, appname: %s" % (key, i))
             yield scrapy.Request(url=base_url % i, method="GET", callback=self.parse_search_result, meta={'keyword': i, 'key': key})
