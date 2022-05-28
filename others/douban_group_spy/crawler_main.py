@@ -29,7 +29,14 @@ from douban_group_spy.models import Group, Post
 
 lg = logging.getLogger(__name__)
 # douban_base_host = cycle(DOUBAN_BASE_HOST)
-
+def validate(date_text):
+    try:
+        if date_text != datetime.strptime(date_text, "%Y-%m-%d").strftime('%Y-%m-%d'):
+            raise ValueError
+        return True
+    except ValueError:
+        # raise ValueError("错误是日期格式或日期,格式是年-月-日")
+        return False 
 
 def process_posts(posts, group, keywords, exclude):
     for t in posts:
@@ -140,7 +147,11 @@ def crawl(group_id, pages, keywords, exclude):
             result['author']={'name':author_link.get_text(),'alt':author_link["href"]}
             result['photos']=post_photos
             result['created']=post_detail.select_one('.create-time').get_text()
-            result['updated']=f'{date.today().year}-{row.select("td")[3].get_text()}:00'
+            if validate(row.select("td")[3].get_text()):
+                update_time=f'{row.select("td")[3].get_text()} 00:00:00'
+            else:
+                update_time=f'{date.today().year}-{row.select("td")[3].get_text()}:00'
+            result['updated']=update_time
             posts.append(result)
         process_posts(posts, group, keywords, exclude)
     
