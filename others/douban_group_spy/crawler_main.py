@@ -29,6 +29,10 @@ from douban_group_spy.models import Group, Post
 
 lg = logging.getLogger(__name__)
 # douban_base_host = cycle(DOUBAN_BASE_HOST)
+
+session = requests.session()
+# session.proxies = {'http': 'http://127.0.0.1:7890', 'https': 'https://127.0.0.1:7890'}
+
 def validate(date_text):
     try:
         if date_text != datetime.strptime(date_text, "%Y-%m-%d").strftime('%Y-%m-%d'):
@@ -84,13 +88,13 @@ def process_posts(posts, group, keywords, exclude):
         lg.info(f'[post] save post: {post.post_id}')
 
 
-def crawl(group_id, pages, keywords, exclude):
+def crawl(group_id, start, pages, keywords, exclude):
     lg.info(f'start crawling group: {group_id}')
     try:
         group = Group.objects.get(id=group_id)
     except ObjectDoesNotExist:
         lg.info(GROUP_INFO_BASE_URL.format(DOUBAN_BASE_HOST, group_id))
-        html = requests.get(GROUP_INFO_BASE_URL.format(DOUBAN_BASE_HOST, group_id), headers={'User-Agent': USER_AGENT, 'Cookie': COOKIE}).text
+        html = session.get(GROUP_INFO_BASE_URL.format(DOUBAN_BASE_HOST, group_id), headers={'User-Agent': USER_AGENT, 'Cookie': COOKIE}).text
         g_info = BeautifulSoup(html,'lxml')
         lg.info(f'Getting group: {group_id} successful')
         member_count_text=g_info.select_one(f"a[href='https://www.douban.com/group/{group_id}/members']").get_text()
@@ -104,7 +108,9 @@ def crawl(group_id, pages, keywords, exclude):
         )
         group.save(force_insert=True)
 
-    for p in range(pages):
+    # start = 10
+    # pages = 10
+    for p in range(start, pages):
         time.sleep(random.randint(5,8))
         # host = next(douban_base_host)
         kwargs = {
@@ -112,14 +118,14 @@ def crawl(group_id, pages, keywords, exclude):
             'params': {'start': p*25},
             'headers': {'User-Agent': USER_AGENT,'Cookie': COOKIE}
         }
-        req = getattr(requests, 'get')(**kwargs)
+        req = getattr(session, 'get')(**kwargs)
         lg.info(f'getting: {req.url}, status: {req.status_code}')
         # if 400, switch host
         if req.status_code != 200:
             # host = next(douban_base_host)
             kwargs['url'] = GROUP_TOPICS_BASE_URL.format(DOUBAN_BASE_HOST, group_id)
             lg.info(f'Rate limit, switching host')
-            req = getattr(requests, 'get')(**kwargs)
+            req = getattr(session, 'get')(**kwargs)
             lg.info(f'getting group: {req.url}, status: {req.status_code}')
             if req.status_code != 200:
                 lg.warning(f'Fail to getting: {req.url}, status: {req.status_code}')
@@ -131,7 +137,7 @@ def crawl(group_id, pages, keywords, exclude):
             time.sleep(random.randint(3,5))
             link=row.select_one('td[class="title"] a')
             link_href=link["href"]
-            post_detail_html = requests.get(link_href, headers={'User-Agent': USER_AGENT, 'Cookie': COOKIE}).text
+            post_detail_html = session.get(link_href, headers={'User-Agent': USER_AGENT, 'Cookie': COOKIE}).text
             post_detail = BeautifulSoup(post_detail_html,'lxml')
             post_content=post_detail.select_one('div[class="topic-content"]')
             post_photos=[]
@@ -161,16 +167,17 @@ def crawl(group_id, pages, keywords, exclude):
 @click.option('--keywords', '-k',  help='search keywords', multiple=True, type=str)
 @click.option('--exclude', '-e',  help='excluded keywords', multiple=True, type=str)
 @click.option('--sleep', help='time sleep', default=60 * 15)
-@click.option('--pages', help='crawl page range', default=10)
+@click.option('--start', help='crawl page start range', default=0)
+@click.option('--pages', '-p', help='crawl page range', default=10)
 @click.option('-v', help='Show debug info', is_flag=True)
-def main(groups: tuple, keywords: tuple, exclude: tuple, sleep, pages, v):
+def main(groups: tuple, keywords: tuple, exclude: tuple, sleep, start, end, v):
     if v:
         logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     else:
         logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     while True:
         for g_id in groups:
-            crawl(g_id, pages, keywords, exclude)
+            crawl(g_id, start, end, keywords, exclude)
         lg.info('Sleeping...')
         time.sleep(sleep)
 
