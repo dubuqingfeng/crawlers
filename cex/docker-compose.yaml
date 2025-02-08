@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multi-program-app
+    restart: always
+    volumes:
+      - ./logs:/var/log/supervisor  # 将容器中的日志挂载到主机
+      - ./json:/app/json # 将容器中的 json 文件挂载到主机
+      - ./applogs:/app/logs # 将容器中的 logs 文件挂载到主机
+    environment:
+      - PYTHONUNBUFFERED=1  # 确保 Python 输出不会缓冲
