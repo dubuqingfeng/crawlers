@@ -35,6 +35,22 @@ except json.JSONDecodeError:
 coin_network_deposit_status = {}
 coin_network_withdraw_status = {}
 
+def send_webhook(logs):
+    # 把 logs 发送 webhook
+    webhook_url = "https://open.larksuite.com/open-apis/bot/v2/hook/da9c99ff-b690-43cf-a9aa-b050c3d0cd69"
+    try:
+        result = requests.post(webhook_url, json={
+            "msg_type": "text",
+            "content": {
+                "text": str(logs)
+            }
+        })
+        result.raise_for_status()  # 检查 HTTP 错误
+        logging.info(f"发送 webhook 成功: {result.text}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"发送 webhook 失败: {str(e)}")
+
+
 # 定义API爬取函数
 def fetch_and_compare():
     global last_response
@@ -61,6 +77,8 @@ def fetch_and_compare():
             all_data.extend(data)
             has_next_page = len(data) > 0
             page += 1
+            logging.info(f"请求成功，当前页码: {page}")
+            time.sleep(1)
 
         logging.info("请求成功")
         hasdiff = False
@@ -116,6 +134,8 @@ def fetch_and_compare():
         # 输出日志
         if logs:
             logging.info("\n".join(logs))
+            # 把 logs 发送 webhook
+            send_webhook(logs)
 
         # 更新上一次的返回值
         last_response = all_data
@@ -128,6 +148,7 @@ def fetch_and_compare():
 # 定时任务：每隔1分钟爬取一次
 schedule.every(1).minutes.do(fetch_and_compare)
 
+fetch_and_compare()
 # 主循环
 print("开始定时爬取...")
 while True:
