@@ -36,13 +36,23 @@ coin_network_deposit_status = {}
 coin_network_withdraw_status = {}
 
 def send_webhook(logs):
-    # 把 logs 发送 webhook
+    # 把 logs 发送 webhook，cex 壮壮的 webhook
     webhook_url = "https://open.larksuite.com/open-apis/bot/v2/hook/da9c99ff-b690-43cf-a9aa-b050c3d0cd69"
     try:
+        # 如果 logs 是字典，转换为字符串
+        if isinstance(logs, dict):
+            message = json.dumps(logs, ensure_ascii=False, indent=2)
+        # 如果 logs 是列表，用换行符连接
+        elif isinstance(logs, list):
+            message = "\n".join(str(item) for item in logs)
+        # 其他情况直接转为字符串
+        else:
+            message = str(logs)
+
         result = requests.post(webhook_url, json={
             "msg_type": "text",
             "content": {
-                "text": str(logs)
+                "text": message
             }
         })
         result.raise_for_status()  # 检查 HTTP 错误

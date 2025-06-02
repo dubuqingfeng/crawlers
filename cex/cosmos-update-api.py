@@ -61,6 +61,31 @@ def get_data():
         logging.error(f"请求失败，错误信息：{e}")
         return None
 
+def send_webhook(logs):
+    # 把 logs 发送 webhook，cex 壮壮的 webhook
+    webhook_url = "https://open.larksuite.com/open-apis/bot/v2/hook/da9c99ff-b690-43cf-a9aa-b050c3d0cd69"
+    try:
+        # 如果 logs 是字典，转换为字符串
+        if isinstance(logs, dict):
+            message = json.dumps(logs, ensure_ascii=False, indent=2)
+        # 如果 logs 是列表，用换行符连接
+        elif isinstance(logs, list):
+            message = "\n".join(str(item) for item in logs)
+        # 其他情况直接转为字符串
+        else:
+            message = str(logs)
+
+        result = requests.post(webhook_url, json={
+            "msg_type": "text",
+            "content": {
+                "text": message
+            }
+        })
+        result.raise_for_status()  # 检查 HTTP 错误
+        logging.info(f"发送 webhook 成功: {result.text}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"发送 webhook 失败: {str(e)}")
+
 def compare_data(new_data, last_data):
     """
     比较新数据和上次的数据
@@ -69,12 +94,22 @@ def compare_data(new_data, last_data):
         logging.info("首次请求，未进行比较。")
         # 打印 new_data
         logging.info(f"新数据: {new_data}")
+        # new_data 这个遍历时里的元素不要包含 proposal、guide、api 字段
+        send_data = []
+        for item in new_data:
+            # 把 item 里的 proposal、guide、api 字段去掉
+            item.pop('proposal', None)
+            item.pop('guide', None)
+            item.pop('api', None)
+            send_data.append(item)
+        send_webhook(send_data)
         return new_data  # 更新 last_data
     
     # 是个 for 循环，比较 new_data 和 last_data
     added = []
     removed = []
     updated = []
+    send_logs = []
 
     # 用 (network, node_version) 作为字典键来存储每个数据项
     last_data_dict = {(item['network'], item['node_version']): item for item in last_data}
@@ -85,12 +120,14 @@ def compare_data(new_data, last_data):
         key = (new_item['network'], new_item['node_version'])
         if key not in last_data_dict:
             added.append(new_item)
+            send_logs.append(f"新增的项: {new_item}")
 
     # 查找删除的项 (last_data 中有，new_data 中没有)
     for last_item in last_data:
         key = (last_item['network'], last_item['node_version'])
         if key not in new_data_dict:
             removed.append(last_item)
+            send_logs.append(f"删除的项: {last_item['network']} - {last_item['node_version']}")
 
     # 查找更新的项 (network 和 node_version 相同但字段有所变化)
     for new_item in new_data:
@@ -105,6 +142,9 @@ def compare_data(new_data, last_data):
                     'node_version': new_item['node_version'],
                     'changes': changed_fields
                 })
+                # 如果 changed_fields 不包含 estimated_upgrade_time，那么添加提醒
+                if 'estimated_upgrade_time' not in changed_fields:
+                    send_logs.append(f"更新的项: {new_item['network']} - {new_item['node_version']}")
 
     # 记录日志
     if added:
@@ -113,6 +153,8 @@ def compare_data(new_data, last_data):
         logging.info(f"删除的项: {removed}")
     if updated:
         logging.info(f"更新的项: {updated}")
+    if send_logs:
+        send_webhook(send_logs)
     # 返回最新数据作为 last_data
     return new_data
 

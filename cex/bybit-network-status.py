@@ -34,6 +34,21 @@ except json.JSONDecodeError:
 coin_network_deposit_status = {}
 coin_network_withdraw_status = {}
 
+def send_webhook(logs):
+    # 把 logs 发送 webhook，cex 壮壮的 webhook
+    webhook_url = "https://open.larksuite.com/open-apis/bot/v2/hook/ac6cf576-40a5-4b75-9219-e1d4857f0a62"
+    try:
+        result = requests.post(webhook_url, json={
+            "msg_type": "text",
+            "content": {
+                "text": "\n".join(logs)
+            }
+        })
+        result.raise_for_status()  # 检查 HTTP 错误
+        logging.info(f"发送 webhook 成功: {result.text}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"发送 webhook 失败: {str(e)}")
+
 # 定义API爬取函数
 def fetch_and_compare():
     global last_response
@@ -105,6 +120,7 @@ def fetch_and_compare():
         # 打印日志
         if logs:
             logging.info("\n".join(logs))
+            send_webhook(logs)
 
         # 更新上一次的返回值
         last_response = current_response
