@@ -66,16 +66,7 @@ def _build_card(title, message, parsed):
         })
     # fallback / details
     # 兼容旧卡片：不使用不可用的折叠组件，改为截断展示
-    # 避免嵌套反引号导致解析异常
-    detail = str(message).replace('```', '\u0060\u0060\u0060')
-    elements.append({
-        "tag": "note",
-        "elements": [{"tag": "plain_text", "content": "原始详情"}]
-    })
-    elements.append({
-        "tag": "div",
-        "text": {"tag": "lark_md", "content": f"```\n{detail}\n```"}
-    })
+    # 不再附带原始详情，保持卡片简洁
     return {
         "msg_type": "interactive",
         "card": {

@@ -79,9 +79,7 @@ def _build_card(title, message, parsed):
                 line += f" · {item['detail']}"
             elements.append({"tag": "div", "text": {"tag": "lark_md", "content": line}})
         elements.append({"tag": "hr"})
-    detail = str(message).replace('```', '\u0060\u0060\u0060')
-    elements.append({"tag": "note", "elements": [{"tag": "plain_text", "content": "原始详情"}]})
-    elements.append({"tag": "div", "text": {"tag": "lark_md", "content": f"```\n{detail}\n```"}})
+    # 不再附带原始详情，保持卡片简洁
     return {"msg_type": "interactive", "card": {"config": {"wide_screen_mode": True}, "elements": elements, "header": {"title": {"tag": "plain_text", "content": title}}}}
 
 def _parse_logs(logs):
