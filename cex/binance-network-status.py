@@ -77,13 +77,15 @@ def _build_card(title, message, parsed):
             "tag": "hr"
         })
     # fallback / details
+    # 兼容旧卡片：不使用不可用的折叠组件，改为截断展示
+    detail = message
     elements.append({
-        "tag": "collapsible",
-        "title": "原始详情",
-        "folded": True,
-        "elements": [
-            {"tag": "div", "text": {"tag": "lark_md", "content": f"```\n{message}\n```"}}
-        ]
+        "tag": "note",
+        "elements": [{"tag": "plain_text", "content": "原始详情"}]
+    })
+    elements.append({
+        "tag": "div",
+        "text": {"tag": "lark_md", "content": f"```\n{detail}\n```"}
     })
     return {
         "msg_type": "interactive",
