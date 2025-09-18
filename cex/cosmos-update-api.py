@@ -73,14 +73,13 @@ def _build_card(title, message, parsed):
             "elements": [{"tag": "plain_text", "content": f"变更: {total} | 新增: {added} | 更新: {changed}"}]
         })
         for item in parsed:
-            color = 'blue' if item.get('type') == 'added' else 'orange'
             tag_text = '新增' if item.get('type') == 'added' else '更新'
-            line = item.get('label', '')
+            line = f"[{tag_text}] " + item.get('label', '')
             if item.get('detail'):
                 line += f" · {item['detail']}"
-            elements.append({"tag": "div", "text": {"tag": "lark_md", "content": line}, "extra": {"tag": "tag", "text": tag_text, "color": color}})
+            elements.append({"tag": "div", "text": {"tag": "lark_md", "content": line}})
         elements.append({"tag": "hr"})
-    detail = message
+    detail = str(message).replace('```', '\u0060\u0060\u0060')
     elements.append({"tag": "note", "elements": [{"tag": "plain_text", "content": "原始详情"}]})
     elements.append({"tag": "div", "text": {"tag": "lark_md", "content": f"```\n{detail}\n```"}})
     return {"msg_type": "interactive", "card": {"config": {"wide_screen_mode": True}, "elements": elements, "header": {"title": {"tag": "plain_text", "content": title}}}}

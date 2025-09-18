@@ -50,35 +50,24 @@ def _build_card(title, message, parsed):
             "elements": [{"tag": "plain_text", "content": " | ".join(overview_lines)}]
         })
         for item in parsed:
-            color = 'orange'
             tag_text = '变更'
-            if item.get('type') == 'added':
-                color = 'blue'; tag_text = '新增'
-            if item.get('type') == 'closed':
-                color = 'red'; tag_text = '关闭'
+            if item.get('type') == 'added': tag_text = '新增'
+            if item.get('type') == 'closed': tag_text = '关闭'
             label = item.get('label', '')
             field = '充值' if item.get('field') == 'deposit' else ('提现' if item.get('field') == 'withdraw' else '')
-            before = item.get('before')
-            after = item.get('after')
-            reason = item.get('reason')
-            line = f"{label}"
-            if field:
-                line += f" · {field}"
-            if before is not None and after is not None:
-                line += f" {before} -> {after}"
-            if reason:
-                line += f" · 因素: {reason}"
-            elements.append({
-                "tag": "div",
-                "text": {"tag": "lark_md", "content": line},
-                "extra": {"tag": "tag", "text": tag_text, "color": color}
-            })
+            before = item.get('before'); after = item.get('after'); reason = item.get('reason')
+            line = f"[{tag_text}] {label}"
+            if field: line += f" · {field}"
+            if before is not None and after is not None: line += f" {before} -> {after}"
+            if reason: line += f" · 因素: {reason}"
+            elements.append({"tag": "div", "text": {"tag": "lark_md", "content": line}})
         elements.append({
             "tag": "hr"
         })
     # fallback / details
     # 兼容旧卡片：不使用不可用的折叠组件，改为截断展示
-    detail = message
+    # 避免嵌套反引号导致解析异常
+    detail = str(message).replace('```', '\u0060\u0060\u0060')
     elements.append({
         "tag": "note",
         "elements": [{"tag": "plain_text", "content": "原始详情"}]
