@@ -4,6 +4,7 @@ import time
 import json
 import os
 import logging
+import os
 
 # https://polkachu.com/chain_upgrades
 # 定义保存数据的文件
@@ -61,9 +62,61 @@ def get_data():
         logging.error(f"请求失败，错误信息：{e}")
         return None
 
+def _build_card(title, message, parsed):
+    elements = []
+    if parsed:
+        total = len(parsed)
+        added = sum(1 for x in parsed if x.get('type') == 'added')
+        changed = sum(1 for x in parsed if x.get('type') == 'changed')
+        elements.append({
+            "tag": "note",
+            "elements": [{"tag": "plain_text", "content": f"变更: {total} | 新增: {added} | 更新: {changed}"}]
+        })
+        for item in parsed:
+            color = 'blue' if item.get('type') == 'added' else 'orange'
+            tag_text = '新增' if item.get('type') == 'added' else '更新'
+            line = item.get('label', '')
+            if item.get('detail'):
+                line += f" · {item['detail']}"
+            elements.append({"tag": "div", "text": {"tag": "lark_md", "content": line}, "extra": {"tag": "tag", "text": tag_text, "color": color}})
+        elements.append({"tag": "hr"})
+    elements.append({
+        "tag": "collapsible",
+        "title": "原始详情",
+        "folded": True,
+        "elements": [{"tag": "div", "text": {"tag": "lark_md", "content": f"```\n{message}\n```"}}]
+    })
+    return {"msg_type": "interactive", "card": {"config": {"wide_screen_mode": True}, "elements": elements, "header": {"title": {"tag": "plain_text", "content": title}}}}
+
+def _parse_logs(logs):
+    parsed = []
+    try:
+        for line in (logs if isinstance(logs, list) else str(logs).splitlines()):
+            s = str(line)
+            item = {}
+            if s.startswith('新增的项:'):
+                item['type'] = 'added'
+                item['label'] = s.replace('新增的项:', '').strip()
+            elif s.startswith('删除的项:'):
+                item['type'] = 'changed'
+                item['label'] = s.replace('删除的项:', '').strip()
+            elif s.startswith('更新的项:'):
+                item['type'] = 'changed'
+                item['label'] = s.replace('更新的项:', '').strip()
+            else:
+                item['type'] = 'changed'
+                item['label'] = s
+            parsed.append(item)
+    except Exception:
+        return []
+    return parsed
+
 def send_webhook(logs):
-    # 把 logs 发送 webhook，cex 壮壮的 webhook
-    webhook_url = "https://open.larksuite.com/open-apis/bot/v2/hook/da9c99ff-b690-43cf-a9aa-b050c3d0cd69"
+    # 从环境变量读取 Lark Webhook 地址
+    webhook_url = os.getenv("LARK_WEBHOOK_URL")
+    if not webhook_url:
+        logging.warning("未配置 LARK_WEBHOOK_URL 环境变量，跳过发送 webhook")
+        return
     try:
         # 如果 logs 是字典，转换为字符串
         if isinstance(logs, dict):
@@ -75,12 +128,8 @@ def send_webhook(logs):
         else:
             message = str(logs)
 
-        result = requests.post(webhook_url, json={
-            "msg_type": "text",
-            "content": {
-                "text": message
-            }
-        })
+        payload = _build_card("Cosmos 升级监控", message, _parse_logs(logs))
+        result = requests.post(webhook_url, json=payload)
         result.raise_for_status()  # 检查 HTTP 错误
         logging.info(f"发送 webhook 成功: {result.text}")
     except requests.exceptions.RequestException as e:

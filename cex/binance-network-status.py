@@ -4,6 +4,7 @@ import schedule
 import time
 from difflib import unified_diff
 import logging
+import os
 
 # 配置日志记录
 logging.basicConfig(
@@ -34,16 +35,111 @@ except json.JSONDecodeError:
 coin_network_deposit_status = {}
 coin_network_withdraw_status = {}
 
-def send_webhook(logs):
-    # 把 logs 发送 webhook，cex 壮壮的 webhook
-    webhook_url = "https://open.larksuite.com/open-apis/bot/v2/hook/59f73db6-a987-4711-8d68-ceb1b92e2f7f"
-    try:
-        result = requests.post(webhook_url, json={
-            "msg_type": "text",
-            "content": {
-                "text": "\n".join(logs)
-            }
+def _build_card(title, message, parsed):
+    overview_lines = []
+    elements = []
+    if parsed:
+        total = len(parsed)
+        deposit_changes = sum(1 for x in parsed if x.get('field') == 'deposit')
+        withdraw_changes = sum(1 for x in parsed if x.get('field') == 'withdraw')
+        added = sum(1 for x in parsed if x.get('type') == 'added')
+        closed = sum(1 for x in parsed if x.get('type') == 'closed')
+        overview_lines.append(f"变更: {total} · 充值变更: {deposit_changes} · 提现变更: {withdraw_changes} · 新增: {added} · 关闭: {closed}")
+        elements.append({
+            "tag": "note",
+            "elements": [{"tag": "plain_text", "content": " | ".join(overview_lines)}]
         })
+        for item in parsed:
+            color = 'orange'
+            tag_text = '变更'
+            if item.get('type') == 'added':
+                color = 'blue'; tag_text = '新增'
+            if item.get('type') == 'closed':
+                color = 'red'; tag_text = '关闭'
+            label = item.get('label', '')
+            field = '充值' if item.get('field') == 'deposit' else ('提现' if item.get('field') == 'withdraw' else '')
+            before = item.get('before')
+            after = item.get('after')
+            reason = item.get('reason')
+            line = f"{label}"
+            if field:
+                line += f" · {field}"
+            if before is not None and after is not None:
+                line += f" {before} -> {after}"
+            if reason:
+                line += f" · 因素: {reason}"
+            elements.append({
+                "tag": "div",
+                "text": {"tag": "lark_md", "content": line},
+                "extra": {"tag": "tag", "text": tag_text, "color": color}
+            })
+        elements.append({
+            "tag": "hr"
+        })
+    # fallback / details
+    elements.append({
+        "tag": "collapsible",
+        "title": "原始详情",
+        "folded": True,
+        "elements": [
+            {"tag": "div", "text": {"tag": "lark_md", "content": f"```\n{message}\n```"}}
+        ]
+    })
+    return {
+        "msg_type": "interactive",
+        "card": {
+            "config": {"wide_screen_mode": True},
+            "elements": elements,
+            "header": {"title": {"tag": "plain_text", "content": title}}
+        }
+    }
+
+def _parse_logs(logs):
+    parsed = []
+    try:
+        for line in (logs if isinstance(logs, list) else str(logs).splitlines()):
+            s = str(line)
+            item = {}
+            if '新增' in s:
+                item['type'] = 'added'
+            elif '关闭' in s:
+                item['type'] = 'closed'
+            elif '变化' in s:
+                item['type'] = 'changed'
+            # field
+            if '充值' in s:
+                item['field'] = 'deposit'
+            elif '提现' in s:
+                item['field'] = 'withdraw'
+            # before/after pattern like "False -> True"
+            if '->' in s:
+                try:
+                    seg = s.split('->')
+                    item['before'] = seg[0].strip()[-5:].strip().strip(':').split()[-1]
+                    item['after'] = seg[1].strip().split()[0]
+                except Exception:
+                    pass
+            # label after prefix "symbol:" or general prefix
+            if 'symbol:' in s or 'name:' in s or 'network:' in s:
+                item['label'] = s.split('reason:')[0].strip()
+            # reason
+            if 'reason:' in s:
+                item['reason'] = s.split('reason:')[-1].strip()
+            parsed.append(item)
+    except Exception:
+        return []
+    return parsed
+
+def send_webhook(logs):
+    # 从环境变量读取 Lark Webhook 地址
+    webhook_url = os.getenv("LARK_WEBHOOK_URL")
+    if not webhook_url:
+        logging.warning("未配置 LARK_WEBHOOK_URL 环境变量，跳过发送 webhook")
+        return
+    try:
+        message = "\n".join(logs) if isinstance(logs, list) else str(logs)
+        payload = _build_card("Binance 网络状态变更", message, _parse_logs(logs))
+        result = requests.post(webhook_url, json=payload)
         result.raise_for_status()  # 检查 HTTP 错误
         logging.info(f"发送 webhook 成功: {result.text}")
     except requests.exceptions.RequestException as e:
