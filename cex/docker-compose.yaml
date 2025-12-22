@@ -14,3 +14,4 @@ services:
     environment:
       - PYTHONUNBUFFERED=1  # 确保 Python 输出不会缓冲
       - LARK_WEBHOOK_URL=${LARK_WEBHOOK_URL}  # 通过环境变量配置 Lark Webhook
+      - COSMOS_LARK_WEBHOOK_URL=${COSMOS_LARK_WEBHOOK_URL}

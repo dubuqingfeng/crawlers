@@ -107,7 +107,7 @@ def _parse_logs(logs):
 
 def send_webhook(logs):
     # 从环境变量读取 Lark Webhook 地址
-    webhook_url = os.getenv("LARK_WEBHOOK_URL")
+    webhook_url = os.getenv("COSMOS_LARK_WEBHOOK_URL")
     if not webhook_url:
         logging.warning("未配置 LARK_WEBHOOK_URL 环境变量，跳过发送 webhook")
         return
